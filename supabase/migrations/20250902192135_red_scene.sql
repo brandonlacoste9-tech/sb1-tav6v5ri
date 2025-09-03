@@ -1,0 +1,43 @@
+@@ .. @@
+   created_at timestamptz default now()
+ );
+-
+--- KPI Dashboard Views
+-create or replace view kpi_dashboard as
+-select 
+-  -- Revenue Per Customer (RPC)
+-  coalesce(
+-    (select sum(amount) from user_subscriptions where status = 'active') / 
+-    nullif((select count(*) from user_subscriptions where status = 'active'), 0), 
+-    0
+-  ) as revenue_per_customer,
+-  
+-  -- Time to First Successful Ad (TTFSA) - average in minutes
+-  coalesce(
+-    (select avg(extract(epoch from (first_successful_ad - created_at))/60) 
+-     from profiles 
+-     where first_successful_ad is not null), 
+-    0
+-  ) as avg_time_to_first_success_minutes,
+-  
+-  -- Active users by source
+-  (select count(*) from profiles where acquisition_source = 'adcreative.ai') as switchers_adcreative,
+-  (select count(*) from profiles where acquisition_source = 'creatopy') as switchers_creatopy,
+-  (select count(*) from profiles where acquisition_source = 'smartly.io') as switchers_smartly,
+-  (select count(*) from profiles where acquisition_source = 'organic') as organic_users,
+-  
+-  -- Total active creatives with scores
+-  (select count(*) from creative_scores where created_at > now() - interval '30 days') as monthly_scored_creatives,
+-  
+-  -- Average performance scores
+-  coalesce((select avg(prescore) from creative_scores where created_at > now() - interval '30 days'), 0) as avg_performance_score,
+-  coalesce((select avg(fraud_score) from creative_scores where created_at > now() - interval '30 days'), 0) as avg_fraud_score,
+-  
+-  -- A/B test completion rate
+-  coalesce(
+-    (select count(*) from ab_tests where decided_at is not null)::float / 
+-    nullif((select count(*) from ab_tests), 0) * 100, 
+-    0
+-  ) as ab_test_completion_rate
+-
+-from (select 1) as dummy_table;
